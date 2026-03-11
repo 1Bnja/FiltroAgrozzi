@@ -1,17 +1,9 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import nextDynamic from "next/dynamic";
 import Link from "next/link";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
-
-export const dynamic = "force-dynamic";
-
-const BarcodeScanner = nextDynamic(
-  () => import("@/components/BarcodeScanner").then((mod) => mod.BarcodeScanner),
-  { ssr: false }
-);
 
 export default function RecepcionPage() {
   const [lote, setLote] = useState("");
@@ -47,16 +39,6 @@ export default function RecepcionPage() {
     [sending]
   );
 
-  const handleScan = useCallback(
-    (result: string) => {
-      if (result && !sending) {
-        setLote(result);
-        enviarLote(result);
-      }
-    },
-    [enviarLote, sending]
-  );
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     enviarLote(lote);
@@ -88,20 +70,15 @@ export default function RecepcionPage() {
           <h1 className="text-lg font-semibold text-slate-900">
             Modo Recepcionista
           </h1>
-          <p className="text-xs text-slate-400">Escanear tarjas y enviar</p>
+          <p className="text-xs text-slate-400">Registrar lotes manualmente</p>
         </div>
       </header>
 
-      {/* Scanner area */}
-      <div className="flex-1 flex flex-col">
-        <div className="px-4 pt-4">
-          <BarcodeScanner onScan={handleScan} />
-        </div>
-
-        {/* Manual input */}
+      {/* Manual input */}
+      <div className="flex-1 flex flex-col justify-center px-4 py-6">
         <form
           onSubmit={handleSubmit}
-          className="flex flex-col gap-4 px-4 py-6 mt-auto"
+          className="flex flex-col gap-4 w-full max-w-md mx-auto"
         >
           <div>
             <label
@@ -116,8 +93,9 @@ export default function RecepcionPage() {
               type="text"
               value={lote}
               onChange={(e) => setLote(e.target.value)}
-              placeholder="Ingresa o escanea el lote..."
+              placeholder="Ingresa el número de lote..."
               autoComplete="off"
+              autoFocus
               className="w-full h-14 px-4 text-lg rounded-2xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-shadow"
             />
           </div>
