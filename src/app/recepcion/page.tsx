@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
@@ -10,10 +10,12 @@ const BarcodeScanner = dynamic(() => import("@/components/BarcodeScanner"), {
   ssr: false,
 });
 
+const VALID_BARCODE = /^\d+$/;
+
 export default function RecepcionPage() {
   const [lote, setLote] = useState("");
   const [sending, setSending] = useState(false);
-  const [scanning, setScanning] = useState(false);
+  const [lastRegistered, setLastRegistered] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const enviarLote = useCallback(
@@ -21,19 +23,42 @@ export default function RecepcionPage() {
       const trimmed = valor.trim();
       if (!trimmed || sending) return;
 
+      // Validate: only numeric codes
+      if (!VALID_BARCODE.test(trimmed)) {
+        toast.error("Código inválido", {
+          description: "Solo se aceptan códigos numéricos",
+        });
+        return;
+      }
+
       setSending(true);
       try {
+        // Check for duplicates
+        const { data: existing } = await getSupabase()
+          .from("pallets")
+          .select("id")
+          .eq("lote", trimmed)
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          toast.warning(`Lote ${trimmed} ya registrado`, {
+            description: "Este pallet ya fue ingresado anteriormente",
+          });
+          return;
+        }
+
         const { error } = await getSupabase()
           .from("pallets")
           .insert({ lote: trimmed, ubicado: false });
 
         if (error) throw error;
 
+        setLastRegistered(trimmed);
+        setLote("");
+        inputRef.current?.focus();
         toast.success(`Lote ${trimmed} registrado`, {
           description: "Enviado a filtro correctamente",
         });
-        setLote("");
-        inputRef.current?.focus();
       } catch {
         toast.error("Error al registrar", {
           description: "Intenta de nuevo",
@@ -45,20 +70,17 @@ export default function RecepcionPage() {
     [sending]
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    enviarLote(lote);
-  };
-
   const handleScan = useCallback(
     (value: string) => {
-      setScanning(false);
-      setLote(value);
-      toast.info(`Código escaneado: ${value}`);
       enviarLote(value);
     },
     [enviarLote]
   );
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    enviarLote(lote);
+  };
 
   return (
     <main className="min-h-svh flex flex-col bg-slate-50">
@@ -86,104 +108,67 @@ export default function RecepcionPage() {
           <h1 className="text-lg font-semibold text-slate-900">
             Modo Recepcionista
           </h1>
-          <p className="text-xs text-slate-400">Registrar lotes manualmente</p>
+          <p className="text-xs text-slate-400">Escaneo automático de pallets</p>
         </div>
       </header>
 
-      {/* Barcode scanner overlay */}
-      {scanning && (
-        <BarcodeScanner
-          onScan={handleScan}
-          onClose={() => setScanning(false)}
-        />
-      )}
+      {/* Scanner always active */}
+      <div className="flex-1 flex flex-col items-center px-4 py-6 gap-4">
+        <div className="w-full max-w-sm">
+          <BarcodeScanner onScan={handleScan} paused={sending} />
+        </div>
 
-      {/* Manual input */}
-      <div className="flex-1 flex flex-col justify-center px-4 py-6">
-        <form
-          onSubmit={handleSubmit}
-          className="flex flex-col gap-4 w-full max-w-md mx-auto"
-        >
-          <div>
-            <label
-              htmlFor="lote"
-              className="block text-sm font-medium text-slate-700 mb-2"
-            >
-              Número de Lote
-            </label>
-            <div className="flex gap-2">
-              <input
-                ref={inputRef}
-                id="lote"
-                type="text"
-                value={lote}
-                onChange={(e) => setLote(e.target.value)}
-                placeholder="Ingresa el número de lote..."
-                autoComplete="off"
-                autoFocus
-                className="flex-1 h-14 px-4 text-lg rounded-2xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-shadow"
-              />
-              <button
-                type="button"
-                onClick={() => setScanning(true)}
-                className="flex items-center justify-center w-14 h-14 rounded-2xl border border-slate-200 bg-white text-slate-600 transition-all hover:bg-slate-50 hover:text-emerald-600 hover:border-emerald-300 active:scale-95"
-                title="Escanear código de barras"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M3 7V5a2 2 0 0 1 2-2h2" />
-                  <path d="M17 3h2a2 2 0 0 1 2 2v2" />
-                  <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
-                  <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
-                  <line x1="7" y1="12" x2="17" y2="12" />
-                  <line x1="7" y1="8" x2="17" y2="8" />
-                  <line x1="7" y1="16" x2="17" y2="16" />
-                </svg>
-              </button>
+        {/* Last registered feedback */}
+        {lastRegistered && (
+          <div className="w-full max-w-sm bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 text-white shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-emerald-900 truncate">
+                Último registrado
+              </p>
+              <p className="text-xs text-emerald-600 font-mono truncate">
+                {lastRegistered}
+              </p>
             </div>
           </div>
-          <button
-            type="submit"
-            disabled={!lote.trim() || sending}
-            className="w-full h-14 rounded-2xl bg-emerald-500 text-white text-lg font-semibold shadow-sm transition-all duration-150 hover:bg-emerald-600 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
-          >
-            {sending ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg
-                  className="animate-spin h-5 w-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
-                </svg>
-                Enviando...
-              </span>
-            ) : (
-              "Enviar a Filtro"
-            )}
-          </button>
-        </form>
+        )}
+
+        {sending && (
+          <div className="flex items-center gap-2 text-slate-500">
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <span className="text-sm">Registrando...</span>
+          </div>
+        )}
+
+        {/* Manual input */}
+        <div className="w-full max-w-sm pt-2 border-t border-slate-200">
+          <p className="text-xs text-slate-400 mb-2 text-center">o ingresa manualmente</p>
+          <form onSubmit={handleSubmit} className="flex gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={lote}
+              onChange={(e) => setLote(e.target.value)}
+              placeholder="Número de lote..."
+              autoComplete="off"
+              className="flex-1 h-12 px-4 text-base rounded-2xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-shadow"
+            />
+            <button
+              type="submit"
+              disabled={!lote.trim() || sending}
+              className="h-12 px-5 rounded-2xl bg-emerald-500 text-white text-sm font-semibold shadow-sm transition-all duration-150 hover:bg-emerald-600 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Enviar
+            </button>
+          </form>
+        </div>
       </div>
     </main>
   );

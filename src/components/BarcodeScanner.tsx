@@ -1,18 +1,44 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 
 interface BarcodeScannerProps {
   onScan: (value: string) => void;
-  onClose: () => void;
+  paused: boolean;
 }
 
-export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
+export default function BarcodeScanner({ onScan, paused }: BarcodeScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
-  const hasScanned = useRef(false);
+  const pausedRef = useRef(paused);
+  const lastScanned = useRef<string | null>(null);
+  const cooldownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep pausedRef in sync
+  useEffect(() => {
+    pausedRef.current = paused;
+    // When unpaused, clear the last scanned so it can scan the same code again if needed
+    if (!paused) {
+      lastScanned.current = null;
+    }
+  }, [paused]);
+
+  const handleDecode = useCallback(
+    (decodedText: string) => {
+      if (pausedRef.current) return;
+      // Ignore if same as last scanned (within cooldown)
+      if (lastScanned.current === decodedText) return;
+      lastScanned.current = decodedText;
+      onScan(decodedText);
+      // Reset cooldown after 3 seconds to allow re-scanning different codes
+      if (cooldownTimer.current) clearTimeout(cooldownTimer.current);
+      cooldownTimer.current = setTimeout(() => {
+        lastScanned.current = null;
+      }, 3000);
+    },
+    [onScan]
+  );
 
   useEffect(() => {
     const regionId = "barcode-reader";
@@ -29,12 +55,7 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
             fps: 10,
             qrbox: { width: 280, height: 120 },
           },
-          (decodedText) => {
-            if (!hasScanned.current) {
-              hasScanned.current = true;
-              onScan(decodedText);
-            }
-          },
+          (decodedText) => handleDecode(decodedText),
           () => {}
         );
       } catch {
@@ -48,66 +69,30 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
 
     return () => {
       mounted = false;
+      if (cooldownTimer.current) clearTimeout(cooldownTimer.current);
       if (scannerRef.current?.isScanning) {
         scannerRef.current.stop().catch(() => {});
       }
     };
-  }, [onScan]);
+  }, [handleDecode]);
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
+        <p className="text-red-600 text-sm">{error}</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-black/60">
-        <p className="text-white text-sm font-medium">Escanear código de barras</p>
-        <button
-          onClick={onClose}
-          className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 text-white transition-colors hover:bg-white/20 active:scale-95"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Scanner area */}
-      <div className="flex-1 flex items-center justify-center px-4" ref={containerRef}>
-        <div className="w-full max-w-sm">
-          {error ? (
-            <div className="bg-red-500/20 border border-red-500/40 rounded-2xl p-6 text-center">
-              <p className="text-red-200 text-sm">{error}</p>
-              <button
-                onClick={onClose}
-                className="mt-4 px-6 py-2 rounded-xl bg-white/10 text-white text-sm hover:bg-white/20 transition-colors"
-              >
-                Cerrar
-              </button>
-            </div>
-          ) : (
-            <div
-              id="barcode-reader"
-              className="w-full rounded-2xl overflow-hidden"
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Hint */}
-      {!error && (
-        <p className="text-center text-white/60 text-xs pb-6 px-4">
-          Apunta la cámara al código de barras del pallet
-        </p>
-      )}
+    <div className="w-full">
+      <div
+        id="barcode-reader"
+        className="w-full rounded-2xl overflow-hidden"
+      />
+      <p className="text-center text-slate-400 text-xs mt-2">
+        {paused ? "Procesando..." : "Apunta la cámara al código de barras"}
+      </p>
     </div>
   );
 }
