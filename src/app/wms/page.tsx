@@ -277,7 +277,8 @@ export default function WmsPage() {
                         disabled={fadingOut.has(pallet.id)}
                         className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition-all hover:bg-emerald-100 active:scale-95 disabled:opacity-50"
                       >
-                        ✅ Ubicado
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                        Ubicado
                       </button>
                     </td>
                   </tr>
