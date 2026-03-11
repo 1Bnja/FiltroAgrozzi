@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export type Pallet = {
   id: string;
-  lote: string;
+  numero_pallet: string;
   created_at: string;
   ubicado: boolean;
 };

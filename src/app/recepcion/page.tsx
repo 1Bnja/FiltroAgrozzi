@@ -13,12 +13,12 @@ const BarcodeScanner = dynamic(() => import("@/components/BarcodeScanner"), {
 const VALID_BARCODE = /^\d+$/;
 
 export default function RecepcionPage() {
-  const [lote, setLote] = useState("");
+  const [numeroPallet, setNumeroPallet] = useState("");
   const [sending, setSending] = useState(false);
   const [lastRegistered, setLastRegistered] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const enviarLote = useCallback(
+  const enviarPallet = useCallback(
     async (valor: string) => {
       const trimmed = valor.trim();
       if (!trimmed || sending) return;
@@ -37,11 +37,11 @@ export default function RecepcionPage() {
         const { data: existing } = await getSupabase()
           .from("pallets")
           .select("id")
-          .eq("lote", trimmed)
+          .eq("numero_pallet", trimmed)
           .limit(1);
 
         if (existing && existing.length > 0) {
-          toast.warning(`Lote ${trimmed} ya registrado`, {
+          toast.warning(`Pallet ${trimmed} ya registrado`, {
             description: "Este pallet ya fue ingresado anteriormente",
           });
           return;
@@ -49,14 +49,14 @@ export default function RecepcionPage() {
 
         const { error } = await getSupabase()
           .from("pallets")
-          .insert({ lote: trimmed, ubicado: false });
+          .insert({ numero_pallet: trimmed, ubicado: false });
 
         if (error) throw error;
 
         setLastRegistered(trimmed);
-        setLote("");
+        setNumeroPallet("");
         inputRef.current?.focus();
-        toast.success(`Lote ${trimmed} registrado`, {
+        toast.success(`Pallet ${trimmed} registrado`, {
           description: "Enviado a filtro correctamente",
         });
       } catch {
@@ -72,14 +72,14 @@ export default function RecepcionPage() {
 
   const handleScan = useCallback(
     (value: string) => {
-      enviarLote(value);
+      enviarPallet(value);
     },
-    [enviarLote]
+    [enviarPallet]
   );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    enviarLote(lote);
+    enviarPallet(numeroPallet);
   };
 
   return (
@@ -108,7 +108,7 @@ export default function RecepcionPage() {
           <h1 className="text-lg font-semibold text-slate-900">
             Modo Recepcionista
           </h1>
-          <p className="text-xs text-slate-400">Escaneo automático de pallets</p>
+          <p className="text-xs text-slate-400">Registro de pallets</p>
         </div>
       </header>
 
@@ -154,15 +154,15 @@ export default function RecepcionPage() {
             <input
               ref={inputRef}
               type="text"
-              value={lote}
-              onChange={(e) => setLote(e.target.value)}
-              placeholder="Número de lote..."
+              value={numeroPallet}
+              onChange={(e) => setNumeroPallet(e.target.value)}
+              placeholder="Número de pallet..."
               autoComplete="off"
               className="flex-1 h-12 px-4 text-base rounded-2xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-shadow"
             />
             <button
               type="submit"
-              disabled={!lote.trim() || sending}
+              disabled={!numeroPallet.trim() || sending}
               className="h-12 px-5 rounded-2xl bg-emerald-500 text-white text-sm font-semibold shadow-sm transition-all duration-150 hover:bg-emerald-600 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Enviar

@@ -3,7 +3,7 @@
 
 create table if not exists pallets (
   id uuid default gen_random_uuid() primary key,
-  lote text not null,
+  numero_pallet text not null,
   ubicado boolean default false,
   created_at timestamptz default now()
 );

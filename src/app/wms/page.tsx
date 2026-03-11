@@ -81,7 +81,7 @@ export default function WmsPage() {
               if (prev.some((p) => p.id === newPallet.id)) return prev;
               return [...prev, newPallet];
             });
-            toast.info(`Nuevo lote: ${newPallet.lote}`, {
+            toast.info(`Nuevo pallet: ${newPallet.numero_pallet}`, {
               description: "Recibido en filtro",
             });
           }
@@ -137,7 +137,7 @@ export default function WmsPage() {
           next.delete(pallet.id);
           return next;
         });
-        toast.success(`Lote ${pallet.lote} ubicado`);
+        toast.success(`Pallet ${pallet.numero_pallet} ubicado`);
       }
     }, 400);
   }, []);
@@ -240,14 +240,14 @@ export default function WmsPage() {
                 </svg>
               </div>
               <p className="text-lg font-medium text-slate-600">Sin pallets en espera</p>
-              <p className="text-sm text-slate-400 mt-1">Los nuevos lotes aparecerán aquí en tiempo real</p>
+              <p className="text-sm text-slate-400 mt-1">Los nuevos pallets aparecerán aquí en tiempo real</p>
             </div>
           ) : (
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-100">
-                    <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Lote</th>
+                    <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Pallet</th>
                     <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4 hidden sm:table-cell">Tiempo en Filtro</th>
                     <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Acción</th>
                   </tr>
@@ -261,7 +261,7 @@ export default function WmsPage() {
                       }`}
                     >
                       <td className="px-6 py-4">
-                        <span className="font-semibold text-slate-900">{pallet.lote}</span>
+                        <span className="font-semibold text-slate-900">{pallet.numero_pallet}</span>
                         <span className="block text-xs text-slate-400 sm:hidden mt-0.5">{formatTiempo(pallet.created_at)}</span>
                       </td>
                       <td className="px-6 py-4 hidden sm:table-cell">
@@ -294,15 +294,15 @@ export default function WmsPage() {
                   <rect width="18" height="18" x="3" y="3" rx="2" /><path d="m9 12 2 2 4-4" />
                 </svg>
               </div>
-              <p className="text-lg font-medium text-slate-600">Sin lotes ubicados</p>
-              <p className="text-sm text-slate-400 mt-1">Los lotes marcados como ubicados aparecerán aquí</p>
+              <p className="text-lg font-medium text-slate-600">Sin pallets ubicados</p>
+              <p className="text-sm text-slate-400 mt-1">Los pallets marcados como ubicados aparecerán aquí</p>
             </div>
           ) : (
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-100">
-                    <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Lote</th>
+                    <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Pallet</th>
                     <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4 hidden sm:table-cell">Registrado</th>
                   </tr>
                 </thead>
@@ -310,7 +310,7 @@ export default function WmsPage() {
                   {ubicados.map((pallet) => (
                     <tr key={pallet.id} className="transition-colors hover:bg-slate-50">
                       <td className="px-6 py-4">
-                        <span className="font-semibold text-slate-900">{pallet.lote}</span>
+                        <span className="font-semibold text-slate-900">{pallet.numero_pallet}</span>
                         <span className="block text-xs text-slate-400 sm:hidden mt-0.5">{formatTiempo(pallet.created_at)}</span>
                       </td>
                       <td className="px-6 py-4 hidden sm:table-cell">
