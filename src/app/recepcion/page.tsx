@@ -4,10 +4,16 @@ import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
+import dynamic from "next/dynamic";
+
+const BarcodeScanner = dynamic(() => import("@/components/BarcodeScanner"), {
+  ssr: false,
+});
 
 export default function RecepcionPage() {
   const [lote, setLote] = useState("");
   const [sending, setSending] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const enviarLote = useCallback(
@@ -44,6 +50,16 @@ export default function RecepcionPage() {
     enviarLote(lote);
   };
 
+  const handleScan = useCallback(
+    (value: string) => {
+      setScanning(false);
+      setLote(value);
+      toast.info(`Código escaneado: ${value}`);
+      enviarLote(value);
+    },
+    [enviarLote]
+  );
+
   return (
     <main className="min-h-svh flex flex-col bg-slate-50">
       {/* Header */}
@@ -74,6 +90,14 @@ export default function RecepcionPage() {
         </div>
       </header>
 
+      {/* Barcode scanner overlay */}
+      {scanning && (
+        <BarcodeScanner
+          onScan={handleScan}
+          onClose={() => setScanning(false)}
+        />
+      )}
+
       {/* Manual input */}
       <div className="flex-1 flex flex-col justify-center px-4 py-6">
         <form
@@ -87,17 +111,45 @@ export default function RecepcionPage() {
             >
               Número de Lote
             </label>
-            <input
-              ref={inputRef}
-              id="lote"
-              type="text"
-              value={lote}
-              onChange={(e) => setLote(e.target.value)}
-              placeholder="Ingresa el número de lote..."
-              autoComplete="off"
-              autoFocus
-              className="w-full h-14 px-4 text-lg rounded-2xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-shadow"
-            />
+            <div className="flex gap-2">
+              <input
+                ref={inputRef}
+                id="lote"
+                type="text"
+                value={lote}
+                onChange={(e) => setLote(e.target.value)}
+                placeholder="Ingresa el número de lote..."
+                autoComplete="off"
+                autoFocus
+                className="flex-1 h-14 px-4 text-lg rounded-2xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-shadow"
+              />
+              <button
+                type="button"
+                onClick={() => setScanning(true)}
+                className="flex items-center justify-center w-14 h-14 rounded-2xl border border-slate-200 bg-white text-slate-600 transition-all hover:bg-slate-50 hover:text-emerald-600 hover:border-emerald-300 active:scale-95"
+                title="Escanear código de barras"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+                  <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+                  <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+                  <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+                  <line x1="7" y1="12" x2="17" y2="12" />
+                  <line x1="7" y1="8" x2="17" y2="8" />
+                  <line x1="7" y1="16" x2="17" y2="16" />
+                </svg>
+              </button>
+            </div>
           </div>
           <button
             type="submit"
